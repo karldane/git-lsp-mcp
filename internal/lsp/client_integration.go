@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sync"
@@ -14,8 +15,8 @@ import (
 
 type StdioLSPClient struct {
 	cmd    *exec.Cmd
-	stdin  *os.File
-	stdout *os.File
+	stdin  io.WriteCloser
+	stdout *json.Decoder
 	mu     sync.Mutex
 	reqID  int
 	ready  bool
@@ -44,15 +45,19 @@ func (c *StdioLSPClient) Initialize(ctx context.Context, rootURI string) error {
 	}
 
 	c.cmd = exec.Command(cmd.Binary, cmd.Args...)
-	stdin, stdout, err := os.Pipe()
+	c.cmd.Stderr = os.Stderr
+
+	stdin, err := c.cmd.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("create pipe: %w", err)
+		return fmt.Errorf("stdin pipe: %w", err)
 	}
 	c.stdin = stdin
-	c.stdout = stdout
-	c.cmd.Stdin = stdin
-	c.cmd.Stdout = stdout
-	c.cmd.Stderr = os.Stderr
+
+	stdout, err := c.cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+	c.stdout = json.NewDecoder(stdout)
 
 	if err := c.cmd.Start(); err != nil {
 		return fmt.Errorf("start lsp: %w", err)
@@ -192,10 +197,8 @@ func (c *StdioLSPClient) sendRequest(ctx context.Context, method string, params,
 	c.stdin.Write(data)
 	c.mu.Unlock()
 
-	decoder := json.NewDecoder(c.stdout)
-
 	var resp map[string]interface{}
-	if err := decoder.Decode(&resp); err != nil {
+	if err := c.stdout.Decode(&resp); err != nil {
 		return fmt.Errorf("decode response: %w", err)
 	}
 
