@@ -31,7 +31,7 @@ func (c *StdioLSPClient) SetCommand(cmd LSPCommand) error {
 	return nil
 }
 
-func (c *StdioLSPClient) Initialize(rootURI string) error {
+func (c *StdioLSPClient) Initialize(ctx context.Context, rootURI string) error {
 	var cmd LSPCommand
 	if c.cmdCmd.Binary != "" {
 		cmd = c.cmdCmd
@@ -61,7 +61,6 @@ func (c *StdioLSPClient) Initialize(rootURI string) error {
 	c.reqID = 0
 	c.ready = false
 
-	ctx := context.Background()
 	if err := c.sendInitialize(ctx, rootURI); err != nil {
 		c.cmd.Process.Kill()
 		return fmt.Errorf("send initialize: %w", err)
@@ -98,7 +97,7 @@ func (c *StdioLSPClient) sendInitialize(ctx context.Context, rootURI string) err
 	return nil
 }
 
-func (c *StdioLSPClient) Definition(file string, line, col int) (*Location, error) {
+func (c *StdioLSPClient) Definition(ctx context.Context, file string, line, col int) (*Location, error) {
 	params := map[string]interface{}{
 		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
 		"position":     map[string]interface{}{"line": line, "character": col},
@@ -107,7 +106,6 @@ func (c *StdioLSPClient) Definition(file string, line, col int) (*Location, erro
 	var resp struct {
 		Result json.RawMessage `json:"result"`
 	}
-	ctx := context.Background()
 	if err := c.sendRequest(ctx, "textDocument/definition", params, &resp); err != nil {
 		return nil, err
 	}
@@ -115,7 +113,7 @@ func (c *StdioLSPClient) Definition(file string, line, col int) (*Location, erro
 	return ParseLocation(resp.Result)
 }
 
-func (c *StdioLSPClient) References(file string, line, col int) ([]Location, error) {
+func (c *StdioLSPClient) References(ctx context.Context, file string, line, col int) ([]Location, error) {
 	params := map[string]interface{}{
 		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
 		"position":     map[string]interface{}{"line": line, "character": col},
@@ -125,7 +123,6 @@ func (c *StdioLSPClient) References(file string, line, col int) ([]Location, err
 	var resp struct {
 		Result json.RawMessage `json:"result"`
 	}
-	ctx := context.Background()
 	if err := c.sendRequest(ctx, "textDocument/references", params, &resp); err != nil {
 		return nil, err
 	}
@@ -133,7 +130,7 @@ func (c *StdioLSPClient) References(file string, line, col int) ([]Location, err
 	return ParseLocations(resp.Result)
 }
 
-func (c *StdioLSPClient) Hover(file string, line, col int) (string, error) {
+func (c *StdioLSPClient) Hover(ctx context.Context, file string, line, col int) (string, error) {
 	params := map[string]interface{}{
 		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
 		"position":     map[string]interface{}{"line": line, "character": col},
@@ -142,7 +139,6 @@ func (c *StdioLSPClient) Hover(file string, line, col int) (string, error) {
 	var resp struct {
 		Result json.RawMessage `json:"result"`
 	}
-	ctx := context.Background()
 	if err := c.sendRequest(ctx, "textDocument/hover", params, &resp); err != nil {
 		return "", err
 	}
@@ -150,7 +146,7 @@ func (c *StdioLSPClient) Hover(file string, line, col int) (string, error) {
 	return ParseHover(resp.Result)
 }
 
-func (c *StdioLSPClient) Diagnostics(file string) ([]Diagnostic, error) {
+func (c *StdioLSPClient) Diagnostics(ctx context.Context, file string) ([]Diagnostic, error) {
 	params := map[string]interface{}{
 		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
 	}
@@ -158,7 +154,6 @@ func (c *StdioLSPClient) Diagnostics(file string) ([]Diagnostic, error) {
 	var resp struct {
 		Result json.RawMessage `json:"result"`
 	}
-	ctx := context.Background()
 	if err := c.sendRequest(ctx, "textDocument/diagnostic", params, &resp); err != nil {
 		return nil, err
 	}
