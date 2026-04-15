@@ -84,21 +84,29 @@ func (c *Config) InjectToken() string {
 		return c.RepoURL
 	}
 
-	if strings.HasPrefix(c.RepoURL, "https://") {
-		protocolEnd := strings.Index(c.RepoURL, "://") + 3
-		afterProtocol := c.RepoURL[protocolEnd:]
-		slashIdx := strings.Index(afterProtocol, "/")
-		if slashIdx == -1 {
-			return c.RepoURL
+	url := c.RepoURL
+
+	if strings.HasPrefix(url, "git@") {
+		rest := strings.TrimPrefix(url, "git@")
+		colonIdx := strings.Index(rest, ":")
+		if colonIdx != -1 {
+			host := rest[:colonIdx]
+			path := rest[colonIdx+1:]
+			url = "https://" + host + "/" + path
 		}
-		atSlash := strings.Index(afterProtocol, "@")
-		if atSlash != -1 && atSlash < slashIdx {
-			return c.RepoURL
-		}
-		return c.RepoURL[:protocolEnd] + c.GitToken + "@" + afterProtocol
 	}
 
-	return c.RepoURL
+	if strings.HasPrefix(url, "https://") {
+		protocolEnd := strings.Index(url, "://") + 3
+		afterProtocol := url[protocolEnd:]
+		atSlash := strings.Index(afterProtocol, "@")
+		if atSlash != -1 {
+			return url
+		}
+		return url[:protocolEnd] + c.GitToken + "@" + afterProtocol
+	}
+
+	return url
 }
 
 type contextKey string

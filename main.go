@@ -15,24 +15,31 @@ import (
 )
 
 func main() {
+	precacheMode := os.Getenv("MCP_PRECACHE") == "true"
+
 	cfg := &config.Config{}
 	cfg.Load()
 
 	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
-		os.Exit(1)
+		if !precacheMode {
+			fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+			os.Exit(1)
+		}
 	}
-
-	repoURL := cfg.InjectToken()
 
 	gitClient := git.NewRealGitClient()
 	lspClient := lsp.NewStdioLSPClient()
 	lifecycle := NewLifecycle(gitClient, lspClient, cfg.CacheDir, cfg.BackendID)
 
-	ctx := context.Background()
-	if err := lifecycle.Initialize(ctx, repoURL, cfg.Branch, cfg.LSP, cfg.LSPBinary); err != nil {
-		fmt.Fprintf(os.Stderr, "Lifecycle initialization failed: %v\n", err)
-		os.Exit(1)
+	if precacheMode {
+		slog.Info("precache mode: skipping lifecycle initialization")
+	} else {
+		repoURL := cfg.InjectToken()
+		ctx := context.Background()
+		if err := lifecycle.Initialize(ctx, repoURL, cfg.Branch, cfg.LSP, cfg.LSPBinary); err != nil {
+			fmt.Fprintf(os.Stderr, "Lifecycle initialization failed: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	serverConfig := &framework.Config{

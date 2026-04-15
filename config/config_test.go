@@ -162,9 +162,15 @@ func TestConfigInjectToken(t *testing.T) {
 			expected: "https://ghp_existing@github.com/test/repo.git",
 		},
 		{
-			name:     "ssh URL unchanged",
+			name:     "ssh URL converted to HTTPS with token",
 			repoURL:  "git@github.com:test/repo.git",
 			token:    "ghp_token123",
+			expected: "https://ghp_token123@github.com/test/repo.git",
+		},
+		{
+			name:     "ssh URL without token",
+			repoURL:  "git@github.com:test/repo.git",
+			token:    "",
 			expected: "git@github.com:test/repo.git",
 		},
 	}
