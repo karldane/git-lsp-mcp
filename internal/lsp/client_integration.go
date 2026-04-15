@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 )
 
@@ -191,9 +192,8 @@ func (c *StdioLSPClient) sendRequest(ctx context.Context, method string, params,
 		return fmt.Errorf("marshal request: %w", err)
 	}
 
-	data = append(data, '\n')
-
 	c.mu.Lock()
+	c.stdin.Write([]byte("Content-Length: " + strconv.Itoa(len(data)) + "\r\n\r\n"))
 	c.stdin.Write(data)
 	c.mu.Unlock()
 
@@ -225,6 +225,6 @@ func (c *StdioLSPClient) sendNotification(ctx context.Context, method string, pa
 	}
 
 	data, _ := json.Marshal(notif)
-	data = append(data, '\n')
+	c.stdin.Write([]byte("Content-Length: " + strconv.Itoa(len(data)) + "\r\n\r\n"))
 	c.stdin.Write(data)
 }
