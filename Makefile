@@ -1,8 +1,9 @@
-# AppScan ASoC MCP Server Makefile
+# git-lsp-mcp Makefile
 
 BINARY_NAME=git-lsp-mcp
 BUILD_DIR=.
 LDFLAGS=-ldflags="-s -w" -trimpath
+BUILD_TAGS=-tags integration
 
 # Default target - downloads dependencies and builds
 .PHONY: all
@@ -15,11 +16,11 @@ deps:
 	@GOPROXY=direct GOSUMDB=off go mod tidy
 	@echo "Dependencies ready"
 
-# Build the binary
+# Build the binary (requires -tags integration for real git/LSP implementations)
 .PHONY: build
 build:
 	@echo "Building $(BINARY_NAME)..."
-	go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) .
+	go build $(BUILD_TAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) .
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 	@du -h $(BUILD_DIR)/$(BINARY_NAME) | cut -f1
 
@@ -29,15 +30,15 @@ build-all: deps build-linux build-darwin build-windows
 
 .PHONY: build-linux
 build-linux:
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
+	GOOS=linux GOARCH=amd64 go build $(BUILD_TAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
 
 .PHONY: build-darwin
 build-darwin:
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 .
+	GOOS=darwin GOARCH=arm64 go build $(BUILD_TAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 .
 
 .PHONY: build-windows
 build-windows:
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
+	GOOS=windows GOARCH=amd64 go build $(BUILD_TAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
 
 # Run tests
 .PHONY: test
@@ -53,7 +54,7 @@ clean:
 # Install locally
 .PHONY: install
 install: build
-	go install $(LDFLAGS) .
+	go install $(BUILD_TAGS) $(LDFLAGS) .
 
 # Show help
 .PHONY: help
@@ -63,7 +64,7 @@ help:
 	@echo "Usage:"
 	@echo "  make              - Download dependencies and build binary"
 	@echo "  make deps         - Download and verify dependencies"
-	@echo "  make build        - Build the binary"
+	@echo "  make build        - Build the binary (with integration tag)"
 	@echo "  make build-all    - Build for all platforms (Linux, macOS, Windows)"
 	@echo "  make test         - Run all tests"
 	@echo "  make clean        - Remove build artifacts"
