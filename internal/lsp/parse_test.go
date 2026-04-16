@@ -216,9 +216,9 @@ func TestFileToURI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := fileToURI(tt.input)
+			got := FileToURI(tt.input)
 			if got != tt.want {
-				t.Errorf("fileToURI(%q) = %q, want %q", tt.input, got, tt.want)
+				t.Errorf("FileToURI(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}

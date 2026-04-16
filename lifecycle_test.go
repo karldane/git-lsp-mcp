@@ -82,6 +82,10 @@ func (f *fakeLSPClient) Diagnostics(ctx context.Context, file string) ([]lsp.Dia
 	return nil, nil
 }
 
+func (f *fakeLSPClient) SendDidOpen(ctx context.Context, uri, content string) error {
+	return nil
+}
+
 func (f *fakeLSPClient) Shutdown() error {
 	return nil
 }

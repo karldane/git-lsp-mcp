@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"strings"
 
 	"github.com/karldane/git-lsp-mcp/internal/git"
 	"github.com/karldane/mcp-framework/framework"
@@ -71,7 +71,7 @@ func (t *GitLogTool) Schema() mcp.ToolInputSchema {
 func (t *GitLogTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
 	var path string
 	if v, ok := args["path"].(string); ok {
-		path = v
+		path = strings.TrimLeft(v, "/")
 	}
 
 	limit := 20
@@ -85,14 +85,7 @@ func (t *GitLogTool) Handle(ctx context.Context, args map[string]interface{}) (s
 		}
 	}
 
-	var fullPath string
-	if path != "" {
-		fullPath = filepath.Join(t.workDir, path)
-	} else {
-		fullPath = t.workDir
-	}
-
-	commits, err := t.git.Log(ctx, fullPath, path, limit)
+	commits, err := t.git.Log(ctx, t.workDir, path, limit)
 	if err != nil {
 		return "", fmt.Errorf("git log: %w", err)
 	}

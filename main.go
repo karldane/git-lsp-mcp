@@ -9,10 +9,17 @@ import (
 	"github.com/karldane/git-lsp-mcp/config"
 	"github.com/karldane/git-lsp-mcp/internal/git"
 	"github.com/karldane/git-lsp-mcp/internal/lsp"
+	"github.com/karldane/git-lsp-mcp/internal/mcp"
 	"github.com/karldane/git-lsp-mcp/tools"
-
-	"github.com/karldane/mcp-framework/framework"
 )
+
+func init() {
+	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
+	if os.Getenv("DEBUG") == "true" {
+		opts.Level = slog.LevelDebug
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, opts)))
+}
 
 func main() {
 	precacheMode := os.Getenv("MCP_PRECACHE") == "true"
@@ -42,34 +49,18 @@ func main() {
 		}
 	}
 
-	serverConfig := &framework.Config{
-		Name:    "github.com/karldane/git-lsp-mcp",
-		Version: "1.0.0",
-		Instructions: `Git LSP MCP Server
-
-Provides semantic source code analysis for a git repository.
-All tools are read-only and operate on the cloned workspace.
-
-Required environment variables:
-- REPO_URL: Full git clone URL
-- BRANCH: Branch to track (default: main)
-- CACHE_DIR: Base path for workspace cache
-- BACKEND_ID: Unique identifier for this backend
-- LSP: Language server (gopls, tsserver, pyright, rust-analyzer)`,
-	}
-
-	srv := framework.NewServerWithConfig(serverConfig)
-
 	workDir := cfg.WorkDir
-	srv.RegisterTool(tools.NewReadFileTool(workDir))
-	srv.RegisterTool(tools.NewSearchTool(workDir))
-	srv.RegisterTool(tools.NewDirectoryTreeTool(workDir))
-	srv.RegisterTool(tools.NewDefinitionTool(workDir, lspClient))
-	srv.RegisterTool(tools.NewReferencesTool(workDir, lspClient))
-	srv.RegisterTool(tools.NewHoverTool(workDir, lspClient))
-	srv.RegisterTool(tools.NewDiagnosticsTool(workDir, lspClient))
-	srv.RegisterTool(tools.NewGitLogTool(workDir, gitClient))
-	srv.RegisterTool(tools.NewGitBlameTool(workDir, gitClient))
+
+	mcpServer := mcp.NewMCPServer(workDir)
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewReadFileTool(workDir)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewSearchTool(workDir)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewDirectoryTreeTool(workDir)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewDefinitionTool(workDir, lspClient)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewReferencesTool(workDir, lspClient)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewHoverTool(workDir, lspClient)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewDiagnosticsTool(workDir, lspClient)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewGitLogTool(workDir, gitClient)))
+	mcpServer.RegisterTool(mcp.NewToolAdapter(tools.NewGitBlameTool(workDir, gitClient)))
 
 	slog.Info("git-lsp-mcp server initialized",
 		"backend_id", cfg.BackendID,
@@ -79,7 +70,7 @@ Required environment variables:
 		"workdir", workDir,
 	)
 
-	if err := srv.Start(); err != nil {
+	if err := mcpServer.Start(); err != nil {
 		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}

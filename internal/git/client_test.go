@@ -15,7 +15,8 @@ func TestParseBlameOutput(t *testing.T) {
 	}{
 		{
 			name: "single line file",
-			output: `author abc123def456
+			output: `abc123def456 42 42 1
+author John Doe
 author-mail <user@example.com>
 author-time 1136214245
 summary commit message
@@ -23,7 +24,7 @@ summary commit message
 `,
 			wantLen:  1,
 			wantHash: "abc123def456",
-			wantLine: 1,
+			wantLine: 42,
 		},
 		{
 			name:     "empty output",

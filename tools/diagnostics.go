@@ -17,6 +17,7 @@ type DiagnosticsTool struct {
 }
 
 type LSPClientDiagnosticsProvider interface {
+	SendDidOpen(ctx context.Context, uri, content string) error
 	Diagnostics(ctx context.Context, file string) ([]lsp.Diagnostic, error)
 }
 

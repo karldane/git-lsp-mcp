@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/karldane/git-lsp-mcp/internal/lsp"
@@ -17,11 +18,16 @@ type DefinitionTool struct {
 }
 
 type LSPClientProvider interface {
+	SendDidOpen(ctx context.Context, uri, content string) error
 	Definition(ctx context.Context, file string, line, col int) (*lsp.Location, error)
 }
 
 type LSPClientWrapper struct {
 	client lsp.LSPClient
+}
+
+func (w *LSPClientWrapper) SendDidOpen(ctx context.Context, uri, content string) error {
+	return w.client.SendDidOpen(ctx, uri, content)
 }
 
 func (w *LSPClientWrapper) Definition(ctx context.Context, file string, line, col int) (*lsp.Location, error) {
@@ -97,6 +103,15 @@ func (t *DefinitionTool) Handle(ctx context.Context, args map[string]interface{}
 	}
 
 	fullPath := filepath.Join(t.workDir, path)
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("read file: %w", err)
+	}
+
+	if err := t.lsp.SendDidOpen(ctx, lsp.FileToURI(fullPath), string(content)); err != nil {
+		return "", fmt.Errorf("didOpen: %w", err)
+	}
+
 	loc, err := t.lsp.Definition(ctx, fullPath, line, col)
 	if err != nil {
 		return "", fmt.Errorf("definition: %w", err)

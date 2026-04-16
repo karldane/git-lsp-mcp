@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/karldane/git-lsp-mcp/internal/lsp"
@@ -17,6 +18,7 @@ type HoverTool struct {
 }
 
 type LSPClientHoverProvider interface {
+	SendDidOpen(ctx context.Context, uri, content string) error
 	Hover(ctx context.Context, file string, line, col int) (string, error)
 }
 
@@ -77,6 +79,15 @@ func (t *HoverTool) Handle(ctx context.Context, args map[string]interface{}) (st
 	}
 
 	fullPath := filepath.Join(t.workDir, path)
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("read file: %w", err)
+	}
+
+	if err := t.lsp.SendDidOpen(ctx, lsp.FileToURI(fullPath), string(content)); err != nil {
+		return "", fmt.Errorf("didOpen: %w", err)
+	}
+
 	hover, err := t.lsp.Hover(ctx, fullPath, line, col)
 	if err != nil {
 		return "", fmt.Errorf("hover: %w", err)

@@ -30,7 +30,7 @@ func (GrepperImpl) Search(ctx context.Context, dir, query, glob string, maxResul
 	if glob != "" {
 		args = append(args, "--glob", glob)
 	}
-	args = append(args, query)
+	args = append(args, "-e", query)
 	args = append(args, dir)
 
 	cmd := exec.CommandContext(ctx, "rg", args...)

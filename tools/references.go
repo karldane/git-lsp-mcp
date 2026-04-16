@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/karldane/git-lsp-mcp/internal/lsp"
@@ -17,6 +18,7 @@ type ReferencesTool struct {
 }
 
 type LSPClientWrapperProvider interface {
+	SendDidOpen(ctx context.Context, uri, content string) error
 	References(ctx context.Context, file string, line, col int) ([]lsp.Location, error)
 }
 
@@ -75,6 +77,15 @@ func (t *ReferencesTool) Handle(ctx context.Context, args map[string]interface{}
 	}
 
 	fullPath := filepath.Join(t.workDir, path)
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("read file: %w", err)
+	}
+
+	if err := t.lsp.SendDidOpen(ctx, lsp.FileToURI(fullPath), string(content)); err != nil {
+		return "", fmt.Errorf("didOpen: %w", err)
+	}
+
 	locs, err := t.lsp.References(ctx, fullPath, line, col)
 	if err != nil {
 		return "", fmt.Errorf("references: %w", err)

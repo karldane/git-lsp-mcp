@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,57 +34,75 @@ type GitClient interface {
 }
 
 const (
-	ObjectPrefix     = "author "
+	ObjectPrefix     = ""
 	AuthorPrefix     = "author-mail "
 	AuthorTimePrefix = "author-time "
+	AuthorNamePrefix = "author "
 )
 
 func ParseBlameOutput(output string) ([]BlameLine, error) {
 	var lines []BlameLine
 	var current BlameLine
 	scanner := bufio.NewScanner(strings.NewReader(output))
-	lineNum := 0
 
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if strings.HasPrefix(line, ObjectPrefix) {
-			if current.Hash != "" {
-				lines = append(lines, current)
-			}
-			hash := strings.TrimPrefix(line, ObjectPrefix)
+		fields := strings.Fields(line)
+		if len(fields) >= 1 && current.Hash == "" {
 			current = BlameLine{
-				Hash:    hash,
+				Hash:    fields[0],
 				LineNum: 0,
 			}
-			lineNum = 0
+			if len(fields) >= 2 {
+				if n, err := strconv.Atoi(fields[1]); err == nil {
+					current.LineNum = n
+				}
+			}
 			continue
 		}
 
-		if strings.HasPrefix(line, AuthorPrefix) {
-			author := strings.TrimPrefix(line, AuthorPrefix)
-			author = strings.Trim(author, "<>")
-			if idx := strings.Index(author, "@"); idx != -1 {
-				author = author[:idx]
-			}
+		if strings.HasPrefix(line, AuthorNamePrefix) && current.Hash != "" {
+			author := strings.TrimPrefix(line, AuthorNamePrefix)
 			author = strings.TrimSpace(author)
 			current.Author = author
 			continue
 		}
 
+		if strings.HasPrefix(line, AuthorPrefix) {
+			if current.Author == "" {
+				author := strings.TrimPrefix(line, AuthorPrefix)
+				author = strings.Trim(author, "<>")
+				if idx := strings.Index(author, "@"); idx != -1 {
+					author = author[:idx]
+				}
+				author = strings.TrimSpace(author)
+				current.Author = author
+			}
+			continue
+		}
+
 		if strings.HasPrefix(line, AuthorTimePrefix) {
-			ts, _ := time.Parse("1136214245", strings.TrimPrefix(line, AuthorTimePrefix))
-			current.Date = ts
+			tsStr := strings.TrimPrefix(line, AuthorTimePrefix)
+			tsStr = strings.TrimSpace(tsStr)
+			if sec, err := strconv.ParseInt(tsStr, 10, 64); err == nil {
+				current.Date = time.Unix(sec, 0)
+			}
 			continue
 		}
 
 		if strings.HasPrefix(line, "\t") {
 			current.Content = strings.TrimPrefix(line, "\t")
-			current.LineNum = lineNum
+			if current.LineNum == 0 {
+				if len(fields) >= 2 {
+					if n, err := strconv.Atoi(fields[1]); err == nil {
+						current.LineNum = n
+					}
+				}
+			}
 			lines = append(lines, current)
 			current = BlameLine{}
 		}
-		lineNum++
 	}
 
 	return lines, nil

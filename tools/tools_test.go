@@ -588,8 +588,12 @@ func TestHoverToolSchema(t *testing.T) {
 }
 
 func TestHoverToolHandle(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("package main\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	provider := &fakeLSPProvider{hoverResult: "type info"}
-	tool := NewHoverToolWithProvider("/test", provider)
+	tool := NewHoverToolWithProvider(dir, provider)
 
 	result, err := tool.Handle(context.Background(), map[string]interface{}{
 		"path":   "a.go",
@@ -769,6 +773,10 @@ func (f *fakeLSPClient) Diagnostics(ctx context.Context, file string) ([]lsp.Dia
 	return nil, nil
 }
 
+func (f *fakeLSPClient) SendDidOpen(ctx context.Context, uri, content string) error {
+	return nil
+}
+
 func (f *fakeLSPClient) Shutdown() error {
 	return nil
 }
@@ -807,6 +815,10 @@ func (f *fakeLSPProvider) Diagnostics(ctx context.Context, file string) ([]lsp.D
 		return nil, f.err
 	}
 	return f.diagResult, nil
+}
+
+func (f *fakeLSPProvider) SendDidOpen(ctx context.Context, uri, content string) error {
+	return nil
 }
 
 func TestGitLogToolHandle(t *testing.T) {
@@ -924,8 +936,12 @@ func TestGitBlameToolMissingPath(t *testing.T) {
 }
 
 func TestDefinitionToolWithDefaults(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("package main\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	provider := &fakeLSPProvider{}
-	tool := NewDefinitionToolWithProvider("/test", provider)
+	tool := NewDefinitionToolWithProvider(dir, provider)
 
 	result, err := tool.Handle(context.Background(), map[string]interface{}{
 		"path": "a.go",
@@ -948,10 +964,15 @@ func TestDefinitionToolWithDefaults(t *testing.T) {
 }
 
 func TestDefinitionToolWithLocation(t *testing.T) {
-	provider := &fakeLSPProvider{
-		defResult: &lsp.Location{Path: "/test/a.go", Line: 10, Column: 5},
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("package main\n"), 0644); err != nil {
+		t.Fatal(err)
 	}
-	tool := NewDefinitionToolWithProvider("/test", provider)
+	defPath := filepath.Join(dir, "a.go")
+	provider := &fakeLSPProvider{
+		defResult: &lsp.Location{Path: defPath, Line: 10, Column: 5},
+	}
+	tool := NewDefinitionToolWithProvider(dir, provider)
 
 	result, err := tool.Handle(context.Background(), map[string]interface{}{
 		"path":   "a.go",
@@ -971,8 +992,8 @@ func TestDefinitionToolWithLocation(t *testing.T) {
 	if !ok {
 		t.Fatal("expected definition in output")
 	}
-	if def["path"] != "/test/a.go" {
-		t.Errorf("definition path = %v, want /test/a.go", def["path"])
+	if def["path"] != defPath {
+		t.Errorf("definition path = %v, want %v", def["path"], defPath)
 	}
 }
 
@@ -991,8 +1012,12 @@ func TestDefinitionToolLSPError(t *testing.T) {
 }
 
 func TestReferencesToolWithDefaults(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("package main\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	provider := &fakeLSPProvider{}
-	tool := NewReferencesToolWithProvider("/test", provider)
+	tool := NewReferencesToolWithProvider(dir, provider)
 
 	result, err := tool.Handle(context.Background(), map[string]interface{}{
 		"path": "a.go",
@@ -1012,13 +1037,20 @@ func TestReferencesToolWithDefaults(t *testing.T) {
 }
 
 func TestReferencesToolWithResults(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("package main\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "b.go"), []byte("package main\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	provider := &fakeLSPProvider{
 		refsResult: []lsp.Location{
-			{Path: "/test/a.go", Line: 10, Column: 5},
-			{Path: "/test/b.go", Line: 20, Column: 10},
+			{Path: filepath.Join(dir, "a.go"), Line: 10, Column: 5},
+			{Path: filepath.Join(dir, "b.go"), Line: 20, Column: 10},
 		},
 	}
-	tool := NewReferencesToolWithProvider("/test", provider)
+	tool := NewReferencesToolWithProvider(dir, provider)
 
 	result, err := tool.Handle(context.Background(), map[string]interface{}{
 		"path":   "a.go",

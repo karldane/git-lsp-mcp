@@ -37,6 +37,10 @@ func (c *StdioLSPClient) Diagnostics(ctx context.Context, file string) ([]Diagno
 	return nil, errors.New("lsp client requires integration build tag")
 }
 
+func (c *StdioLSPClient) SendDidOpen(ctx context.Context, uri, content string) error {
+	return errors.New("lsp client requires integration build tag")
+}
+
 func (c *StdioLSPClient) Shutdown() error {
 	return nil
 }

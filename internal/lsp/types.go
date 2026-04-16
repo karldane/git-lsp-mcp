@@ -20,6 +20,7 @@ type Diagnostic struct {
 type LSPClient interface {
 	SetCommand(cmd LSPCommand) error
 	Initialize(ctx context.Context, rootURI string) error
+	SendDidOpen(ctx context.Context, uri, content string) error
 	Definition(ctx context.Context, file string, line, col int) (*Location, error)
 	References(ctx context.Context, file string, line, col int) ([]Location, error)
 	Hover(ctx context.Context, file string, line, col int) (string, error)

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func fileToURI(file string) string {
+func FileToURI(file string) string {
 	if strings.HasPrefix(file, "file://") {
 		return file
 	}

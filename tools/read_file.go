@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -59,6 +60,7 @@ func (t *ReadFileTool) Handle(ctx context.Context, args map[string]interface{}) 
 	}
 
 	fullPath := filepath.Join(t.workDir, path)
+	slog.Debug("read_file", "workDir", t.workDir, "path", path, "fullPath", fullPath)
 	content, err := t.fs.ReadFile(fullPath)
 	if err != nil {
 		return "", fmt.Errorf("read file: %w", err)

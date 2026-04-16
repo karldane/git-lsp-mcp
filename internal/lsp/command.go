@@ -19,6 +19,11 @@ func Command(lsp string) LSPCommand {
 				"-e", "Perl::LanguageServer::run()",
 			},
 		}
+	case "perlnavigator", "perlnavigator-server":
+		return LSPCommand{
+			Binary: "perlnavigator",
+			Args:   []string{"--stdio"},
+		}
 	case "gopls":
 		return LSPCommand{
 			Binary: "gopls",

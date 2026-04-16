@@ -4,6 +4,7 @@
 package lsp
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,17 +12,21 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 )
 
 type StdioLSPClient struct {
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	stdout *json.Decoder
-	mu     sync.Mutex
-	reqID  int
-	ready  bool
-	cmdCmd LSPCommand
+	cmd     *exec.Cmd
+	stdin   io.WriteCloser
+	stdout  *json.Decoder
+	stdoutR io.ReadCloser
+	mu      sync.Mutex
+	sendMu  sync.Mutex
+	reqID   int
+	ready   bool
+	cmdCmd  LSPCommand
 }
 
 func NewStdioLSPClient() *StdioLSPClient {
@@ -46,7 +51,12 @@ func (c *StdioLSPClient) Initialize(ctx context.Context, rootURI string) error {
 	}
 
 	c.cmd = exec.Command(cmd.Binary, cmd.Args...)
-	c.cmd.Stderr = os.Stderr
+	stderrFile, err := os.OpenFile("/tmp/lsp-stderr.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err == nil {
+		c.cmd.Stderr = stderrFile
+	} else {
+		c.cmd.Stderr = os.Stderr
+	}
 
 	stdin, err := c.cmd.StdinPipe()
 	if err != nil {
@@ -58,6 +68,7 @@ func (c *StdioLSPClient) Initialize(ctx context.Context, rootURI string) error {
 	if err != nil {
 		return fmt.Errorf("stdout pipe: %w", err)
 	}
+	c.stdoutR = stdout
 	c.stdout = json.NewDecoder(stdout)
 
 	if err := c.cmd.Start(); err != nil {
@@ -73,6 +84,22 @@ func (c *StdioLSPClient) Initialize(ctx context.Context, rootURI string) error {
 	}
 
 	c.ready = true
+	return nil
+}
+
+func (c *StdioLSPClient) SendDidOpen(ctx context.Context, uri, content string) error {
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+
+	params := map[string]interface{}{
+		"textDocument": map[string]interface{}{
+			"uri":        uri,
+			"languageId": "perl",
+			"version":    1,
+			"text":       content,
+		},
+	}
+	c.sendNotification(ctx, "textDocument/didOpen", params)
 	return nil
 }
 
@@ -105,7 +132,7 @@ func (c *StdioLSPClient) sendInitialize(ctx context.Context, rootURI string) err
 
 func (c *StdioLSPClient) Definition(ctx context.Context, file string, line, col int) (*Location, error) {
 	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
+		"textDocument": map[string]interface{}{"uri": FileToURI(file)},
 		"position":     map[string]interface{}{"line": line, "character": col},
 	}
 
@@ -121,7 +148,7 @@ func (c *StdioLSPClient) Definition(ctx context.Context, file string, line, col 
 
 func (c *StdioLSPClient) References(ctx context.Context, file string, line, col int) ([]Location, error) {
 	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
+		"textDocument": map[string]interface{}{"uri": FileToURI(file)},
 		"position":     map[string]interface{}{"line": line, "character": col},
 		"context":      map[string]interface{}{"includeDeclaration": true},
 	}
@@ -138,7 +165,7 @@ func (c *StdioLSPClient) References(ctx context.Context, file string, line, col 
 
 func (c *StdioLSPClient) Hover(ctx context.Context, file string, line, col int) (string, error) {
 	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
+		"textDocument": map[string]interface{}{"uri": FileToURI(file)},
 		"position":     map[string]interface{}{"line": line, "character": col},
 	}
 
@@ -154,7 +181,7 @@ func (c *StdioLSPClient) Hover(ctx context.Context, file string, line, col int) 
 
 func (c *StdioLSPClient) Diagnostics(ctx context.Context, file string) ([]Diagnostic, error) {
 	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{"uri": fileToURI(file)},
+		"textDocument": map[string]interface{}{"uri": FileToURI(file)},
 	}
 
 	var resp struct {
@@ -175,6 +202,9 @@ func (c *StdioLSPClient) Shutdown() error {
 }
 
 func (c *StdioLSPClient) sendRequest(ctx context.Context, method string, params, result interface{}) error {
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+
 	c.mu.Lock()
 	c.reqID++
 	id := c.reqID
@@ -197,9 +227,9 @@ func (c *StdioLSPClient) sendRequest(ctx context.Context, method string, params,
 	c.stdin.Write(data)
 	c.mu.Unlock()
 
-	var resp map[string]interface{}
-	if err := c.stdout.Decode(&resp); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	resp, err := c.readResponseWithTimeout(ctx, 30*time.Second)
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
 	}
 
 	if errMsg, ok := resp["error"].(map[string]interface{}); ok {
@@ -212,6 +242,81 @@ func (c *StdioLSPClient) sendRequest(ctx context.Context, method string, params,
 	}
 
 	return nil
+}
+
+func (c *StdioLSPClient) readResponseWithTimeout(ctx context.Context, timeout time.Duration) (map[string]interface{}, error) {
+	type result struct {
+		resp map[string]interface{}
+		err  error
+	}
+	done := make(chan result, 1)
+
+	go func() {
+		resp, err := c.readResponse()
+		done <- result{resp, err}
+	}()
+
+	select {
+	case r := <-done:
+		return r.resp, r.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(timeout):
+		return nil, fmt.Errorf("timeout waiting for LSP response")
+	}
+}
+
+func (c *StdioLSPClient) readResponse() (map[string]interface{}, error) {
+	for attempts := 0; attempts < 20; attempts++ {
+		reader := bufio.NewReader(c.stdoutR)
+
+		headers := make(map[string]string)
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				return nil, fmt.Errorf("read header: %w", err)
+			}
+			line = strings.TrimRight(line, "\r\n")
+			if line == "" {
+				break
+			}
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				headers[strings.ToLower(strings.TrimSpace(parts[0]))] = strings.TrimSpace(parts[1])
+			}
+		}
+
+		contentLength := 0
+		if len, ok := headers["content-length"]; ok && len != "" {
+			contentLength, _ = strconv.Atoi(len)
+		}
+
+		var body []byte
+		if contentLength > 0 {
+			body = make([]byte, contentLength)
+			_, err := io.ReadFull(reader, body)
+			if err != nil {
+				return nil, fmt.Errorf("read body: %w", err)
+			}
+		} else {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				return nil, fmt.Errorf("read nldjson line: %w", err)
+			}
+			body = []byte(strings.TrimRight(line, "\r\n"))
+		}
+
+		var resp map[string]interface{}
+		if err := json.Unmarshal(body, &resp); err != nil {
+			continue
+		}
+
+		if _, hasID := resp["id"]; hasID {
+			return resp, nil
+		}
+	}
+
+	return nil, fmt.Errorf("too many async messages, no response")
 }
 
 func (c *StdioLSPClient) sendNotification(ctx context.Context, method string, params interface{}) {

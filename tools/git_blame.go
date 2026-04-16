@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"strings"
 
 	"github.com/karldane/git-lsp-mcp/internal/git"
 	"github.com/karldane/mcp-framework/framework"
@@ -52,12 +52,12 @@ func (t *GitBlameTool) Schema() mcp.ToolInputSchema {
 
 func (t *GitBlameTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
 	path, _ := args["path"].(string)
+	path = strings.TrimLeft(path, "/")
 	if path == "" {
 		return "", fmt.Errorf("path is required")
 	}
 
-	fullPath := filepath.Join(t.workDir, path)
-	lines, err := t.git.Blame(ctx, fullPath, path)
+	lines, err := t.git.Blame(ctx, t.workDir, path)
 	if err != nil {
 		return "", fmt.Errorf("git blame: %w", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/karldane/git-lsp-mcp/internal/git"
 	"github.com/karldane/git-lsp-mcp/internal/lsp"
@@ -92,7 +93,7 @@ func (l *Lifecycle) Initialize(ctx context.Context, repoURL, branch, lspName, ls
 		if err != nil {
 			return fmt.Errorf("get remote url: %w", err)
 		}
-		if remoteURL != repoURL {
+		if !urlsMatch(remoteURL, repoURL) {
 			return fmt.Errorf("remote mismatch: got %q, want %q", remoteURL, repoURL)
 		}
 		if err := l.Git.Fetch(ctx, workDir); err != nil {
@@ -131,4 +132,36 @@ func (l *Lifecycle) dirExists(path string) (bool, error) {
 		return false, err
 	}
 	return info.IsDir(), nil
+}
+
+func urlsMatch(a, b string) bool {
+	return stripURL(a) == stripURL(b)
+}
+
+func stripURL(url string) string {
+	url = strings.TrimSpace(url)
+
+	if strings.HasPrefix(url, "git@") {
+		rest := strings.TrimPrefix(url, "git@")
+		colonIdx := strings.Index(rest, ":")
+		if colonIdx != -1 {
+			host := rest[:colonIdx]
+			path := rest[colonIdx+1:]
+			return host + "/" + path
+		}
+	}
+
+	if strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
+		protoIdx := strings.Index(url, "://")
+		if protoIdx != -1 {
+			rest := url[protoIdx+3:]
+			atIdx := strings.Index(rest, "@")
+			if atIdx != -1 {
+				rest = rest[atIdx+1:]
+			}
+			return rest
+		}
+	}
+
+	return url
 }
