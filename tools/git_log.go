@@ -68,7 +68,7 @@ func (t *GitLogTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *GitLogTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *GitLogTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	var path string
 	if v, ok := args["path"].(string); ok {
 		path = strings.TrimLeft(v, "/")
@@ -87,7 +87,7 @@ func (t *GitLogTool) Handle(ctx context.Context, args map[string]interface{}) (s
 
 	commits, err := t.git.Log(ctx, t.workDir, path, limit)
 	if err != nil {
-		return "", fmt.Errorf("git log: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("git log: %w", err)
 	}
 
 	type CommitOutput struct {
@@ -116,10 +116,10 @@ func (t *GitLogTool) Handle(ctx context.Context, args map[string]interface{}) (s
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func (t *GitLogTool) GetEnforcerProfile() *framework.EnforcerProfile {

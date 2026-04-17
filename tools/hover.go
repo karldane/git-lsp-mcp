@@ -62,10 +62,10 @@ func (t *HoverTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *HoverTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *HoverTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	path, _ := args["path"].(string)
 	if path == "" {
-		return "", fmt.Errorf("path is required")
+		return framework.ToolResult{}, fmt.Errorf("path is required")
 	}
 
 	line := 0
@@ -81,16 +81,16 @@ func (t *HoverTool) Handle(ctx context.Context, args map[string]interface{}) (st
 	fullPath := filepath.Join(t.workDir, path)
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
-		return "", fmt.Errorf("read file: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("read file: %w", err)
 	}
 
 	if err := t.lsp.SendDidOpen(ctx, lsp.FileToURI(fullPath), string(content)); err != nil {
-		return "", fmt.Errorf("didOpen: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("didOpen: %w", err)
 	}
 
 	hover, err := t.lsp.Hover(ctx, fullPath, line, col)
 	if err != nil {
-		return "", fmt.Errorf("hover: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("hover: %w", err)
 	}
 
 	result := map[string]interface{}{
@@ -102,10 +102,10 @@ func (t *HoverTool) Handle(ctx context.Context, args map[string]interface{}) (st
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func (t *HoverTool) GetEnforcerProfile() *framework.EnforcerProfile {

@@ -99,7 +99,7 @@ func TestReadFileToolHandle(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Handle() error = %v", err)
 			}
-			if tc.wantOutput && result == "" {
+			if tc.wantOutput && len(result.Content) == 0 {
 				t.Error("expected output, got empty")
 			}
 		})
@@ -270,7 +270,7 @@ func TestDirectoryTreeToolHandle(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -326,7 +326,7 @@ func TestDirectoryTreeToolDepth(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -352,7 +352,7 @@ func TestDirectoryTreeToolNegativeDepth(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -605,7 +605,7 @@ func TestHoverToolHandle(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -837,7 +837,7 @@ func TestGitLogToolHandle(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -904,7 +904,7 @@ func TestGitBlameToolHandle(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -951,7 +951,7 @@ func TestDefinitionToolWithDefaults(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -984,7 +984,7 @@ func TestDefinitionToolWithLocation(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -1027,7 +1027,7 @@ func TestReferencesToolWithDefaults(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -1062,7 +1062,7 @@ func TestReferencesToolWithResults(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 
@@ -1101,7 +1101,7 @@ func TestDiagnosticsToolHandle(t *testing.T) {
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal([]byte(result), &output); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &output); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
 

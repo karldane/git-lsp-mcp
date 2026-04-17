@@ -23,8 +23,8 @@ func (s *MCPServer) Start() error { return nil }
 type ToolHandler interface {
 	Name() string
 	Description() string
-	Schema() string
-	Handle(ctx context.Context, args map[string]interface{}) (string, error)
+	Schema() mcp.ToolInputSchema
+	Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error)
 	GetEnforcerProfile() *EnforcerProfile
 }
 
@@ -41,7 +41,7 @@ type ToolAdapter struct {
 	tool interface {
 		Name() string
 		Description() string
-		Handle(ctx context.Context, args map[string]interface{}) (string, error)
+		Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error)
 		GetEnforcerProfile() *framework.EnforcerProfile
 		Schema() mcp.ToolInputSchema
 	}
@@ -50,17 +50,17 @@ type ToolAdapter struct {
 func NewToolAdapter(tool interface {
 	Name() string
 	Description() string
-	Handle(ctx context.Context, args map[string]interface{}) (string, error)
+	Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error)
 	GetEnforcerProfile() *framework.EnforcerProfile
 	Schema() mcp.ToolInputSchema
 }) *ToolAdapter {
 	return &ToolAdapter{tool: tool}
 }
 
-func (a *ToolAdapter) Name() string        { return a.tool.Name() }
-func (a *ToolAdapter) Description() string { return a.tool.Description() }
-func (a *ToolAdapter) Schema() string      { return "{}" }
-func (a *ToolAdapter) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (a *ToolAdapter) Name() string                { return a.tool.Name() }
+func (a *ToolAdapter) Description() string         { return a.tool.Description() }
+func (a *ToolAdapter) Schema() mcp.ToolInputSchema { return a.tool.Schema() }
+func (a *ToolAdapter) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	return a.tool.Handle(ctx, args)
 }
 func (a *ToolAdapter) GetEnforcerProfile() *EnforcerProfile {

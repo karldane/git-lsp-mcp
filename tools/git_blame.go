@@ -50,16 +50,16 @@ func (t *GitBlameTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *GitBlameTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *GitBlameTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	path, _ := args["path"].(string)
 	path = strings.TrimLeft(path, "/")
 	if path == "" {
-		return "", fmt.Errorf("path is required")
+		return framework.ToolResult{}, fmt.Errorf("path is required")
 	}
 
 	lines, err := t.git.Blame(ctx, t.workDir, path)
 	if err != nil {
-		return "", fmt.Errorf("git blame: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("git blame: %w", err)
 	}
 
 	type BlameOutput struct {
@@ -93,10 +93,10 @@ func (t *GitBlameTool) Handle(ctx context.Context, args map[string]interface{}) 
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func (t *GitBlameTool) GetEnforcerProfile() *framework.EnforcerProfile {

@@ -63,7 +63,7 @@ func (t *DirectoryTreeTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *DirectoryTreeTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *DirectoryTreeTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	path := "/"
 	if v, ok := args["path"].(string); ok {
 		path = v
@@ -81,12 +81,12 @@ func (t *DirectoryTreeTool) Handle(ctx context.Context, args map[string]interfac
 	info, err := t.fs.Stat(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("path does not exist: %s", path)
+			return framework.ToolResult{}, fmt.Errorf("path does not exist: %s", path)
 		}
-		return "", fmt.Errorf("stat: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("stat: %w", err)
 	}
 	if !info.IsDir() {
-		return "", fmt.Errorf("path is not a directory: %s", path)
+		return framework.ToolResult{}, fmt.Errorf("path is not a directory: %s", path)
 	}
 
 	tree := buildTree(t.fs, fullPath, depth)
@@ -97,10 +97,10 @@ func (t *DirectoryTreeTool) Handle(ctx context.Context, args map[string]interfac
 		"tree":  tree,
 	})
 	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func buildTree(fs DirWalker, root string, maxDepth int) []TreeNode {

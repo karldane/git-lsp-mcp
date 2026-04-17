@@ -60,10 +60,10 @@ func (t *ReferencesTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *ReferencesTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *ReferencesTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	path, _ := args["path"].(string)
 	if path == "" {
-		return "", fmt.Errorf("path is required")
+		return framework.ToolResult{}, fmt.Errorf("path is required")
 	}
 
 	line := 0
@@ -79,16 +79,16 @@ func (t *ReferencesTool) Handle(ctx context.Context, args map[string]interface{}
 	fullPath := filepath.Join(t.workDir, path)
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
-		return "", fmt.Errorf("read file: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("read file: %w", err)
 	}
 
 	if err := t.lsp.SendDidOpen(ctx, lsp.FileToURI(fullPath), string(content)); err != nil {
-		return "", fmt.Errorf("didOpen: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("didOpen: %w", err)
 	}
 
 	locs, err := t.lsp.References(ctx, fullPath, line, col)
 	if err != nil {
-		return "", fmt.Errorf("references: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("references: %w", err)
 	}
 
 	result := map[string]interface{}{
@@ -112,10 +112,10 @@ func (t *ReferencesTool) Handle(ctx context.Context, args map[string]interface{}
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func (t *ReferencesTool) GetEnforcerProfile() *framework.EnforcerProfile {

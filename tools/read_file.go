@@ -53,17 +53,17 @@ func (t *ReadFileTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *ReadFileTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *ReadFileTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	path, ok := args["path"].(string)
 	if !ok || path == "" {
-		return "", fmt.Errorf("path is required")
+		return framework.ToolResult{}, fmt.Errorf("path is required")
 	}
 
 	fullPath := filepath.Join(t.workDir, path)
 	slog.Debug("read_file", "workDir", t.workDir, "path", path, "fullPath", fullPath)
 	content, err := t.fs.ReadFile(fullPath)
 	if err != nil {
-		return "", fmt.Errorf("read file: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("read file: %w", err)
 	}
 
 	result := map[string]interface{}{
@@ -74,9 +74,9 @@ func (t *ReadFileTool) Handle(ctx context.Context, args map[string]interface{}) 
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("marshal result: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal result: %w", err)
 	}
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func (t *ReadFileTool) GetEnforcerProfile() *framework.EnforcerProfile {

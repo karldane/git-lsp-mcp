@@ -62,7 +62,7 @@ func (a *ToolAdapter) Schema() string {
 	data, _ := json.Marshal(schema)
 	return string(data)
 }
-func (a *ToolAdapter) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (a *ToolAdapter) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	return a.tool.Handle(ctx, args)
 }
 func (a *ToolAdapter) GetEnforcerProfile() *EnforcerProfile {

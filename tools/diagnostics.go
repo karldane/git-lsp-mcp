@@ -53,16 +53,16 @@ func (t *DiagnosticsTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *DiagnosticsTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *DiagnosticsTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	path, _ := args["path"].(string)
 	if path == "" {
-		return "", fmt.Errorf("path is required")
+		return framework.ToolResult{}, fmt.Errorf("path is required")
 	}
 
 	fullPath := filepath.Join(t.workDir, path)
 	diags, err := t.lsp.Diagnostics(ctx, fullPath)
 	if err != nil {
-		return "", fmt.Errorf("diagnostics: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("diagnostics: %w", err)
 	}
 
 	result := map[string]interface{}{
@@ -76,10 +76,10 @@ func (t *DiagnosticsTool) Handle(ctx context.Context, args map[string]interface{
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func (t *DiagnosticsTool) GetEnforcerProfile() *framework.EnforcerProfile {

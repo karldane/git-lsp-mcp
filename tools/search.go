@@ -154,10 +154,10 @@ func (t *SearchTool) Schema() mcp.ToolInputSchema {
 	}
 }
 
-func (t *SearchTool) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *SearchTool) Handle(ctx context.Context, args map[string]interface{}) (framework.ToolResult, error) {
 	query, ok := args["query"].(string)
 	if !ok || query == "" {
-		return "", fmt.Errorf("query is required")
+		return framework.ToolResult{}, fmt.Errorf("query is required")
 	}
 
 	glob, _ := args["glob"].(string)
@@ -171,7 +171,7 @@ func (t *SearchTool) Handle(ctx context.Context, args map[string]interface{}) (s
 
 	results, err := t.rg.Search(ctx, t.workDir, query, glob, maxResults)
 	if err != nil {
-		return "", fmt.Errorf("search: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("search: %w", err)
 	}
 
 	data, err := json.Marshal(map[string]interface{}{
@@ -182,10 +182,10 @@ func (t *SearchTool) Handle(ctx context.Context, args map[string]interface{}) (s
 		"results":     results,
 	})
 	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
+		return framework.ToolResult{}, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(data), nil
+	return framework.TextResult(string(data)), nil
 }
 
 func (t *SearchTool) GetEnforcerProfile() *framework.EnforcerProfile {
