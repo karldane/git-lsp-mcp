@@ -103,6 +103,19 @@ All blame entries had `line_number` = 1 because the line counter was local to ea
 
  **Fix**: Changed `O_APPEND` to `O_TRUNC` in `internal/lsp/client_integration.go` so the log is cleared on each LSP initialization.
 
+### 14. Process crash detection (FIXED)
+
+ Severity: Medium
+
+ When a backend process crashed during a request, the error message was misleading ("No response received" or "No warm processes available") making it hard to distinguish from actual infrastructure issues.
+
+ **Fix** (mcp-bridge):
+ - Added `IsAlive()` method to `ManagedProcess` that checks if the process is still running via `proc.Cmd.ProcessState`
+ - Updated `TryAcquireWarm()` and `WaitForWarmWithMax()` to detect dead processes, log a warning, and trigger respawn
+ - Updated routing handlers to return clearer error messages:
+   - `Backend <name> unavailable: <reason>` when pool can't provide a process
+   - `Backend <name> process crashed during request, please retry` when process dies mid-request
+
 ## Verified Working Tools
 
 | Tool | Status |
