@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/gofrs/flock v0.12.1
-	github.com/karldane/mcp-framework v0.2.8
+	github.com/karldane/mcp-framework v0.2.9
 	github.com/mark3labs/mcp-go v0.45.0
 )
 
